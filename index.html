@@ -1647,7 +1647,9 @@ function renderGrid() {
                ondragleave="onDragLeave(event)"
                ondrop="onDrop(event, '${day}', '${meal}')">
             ${r
-              ? `<div class="assigned-recipe">
+              ? `<div class="assigned-recipe"
+                      draggable="true"
+                      ondragstart="onDragStart(event, ${r.id}, '${day}', '${meal}')">
                    <span class="emoji">${r.emoji}</span>
                    <span class="name">${r.name}</span>
                    <button class="remove-btn" onclick="removeFromPlan('${day}','${meal}')" title="Remove">×</button>
@@ -1664,10 +1666,12 @@ function renderGrid() {
 // DRAG & DROP
 // ══════════════════════════════════
 let draggingId = null;
+let draggingSource = null; // { day, meal } if dragging from calendar, null if from sidebar
 
-function onDragStart(e, id) {
+function onDragStart(e, id, srcDay, srcMeal) {
   draggingId = id;
-  e.dataTransfer.effectAllowed = 'copy';
+  draggingSource = (srcDay !== undefined) ? { day: srcDay, meal: srcMeal } : null;
+  e.dataTransfer.effectAllowed = draggingSource ? 'move' : 'copy';
 }
 function onDragOver(e) {
   e.preventDefault();
@@ -1680,8 +1684,13 @@ function onDrop(e, day, meal) {
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   if (draggingId) {
+    // If moving from another cell, clear the source
+    if (draggingSource && !(draggingSource.day === day && draggingSource.meal === meal)) {
+      plan[draggingSource.day][draggingSource.meal] = null;
+    }
     plan[day][meal] = draggingId;
     draggingId = null;
+    draggingSource = null;
     saveToStorage();
     renderGrid();
   }
