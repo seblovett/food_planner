@@ -577,6 +577,7 @@
       <h2>🛒 Shopping List</h2>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-outline" onclick="uncheckAll()">↺ Uncheck All</button>
+        <button class="btn btn-primary" id="copy-btn" onclick="copyShoppingList()">📋 Copy List</button>
         <button class="btn btn-secondary" onclick="window.print()">🖨️ Print List</button>
       </div>
     </div>
@@ -1504,6 +1505,37 @@ function renderShoppingList() {
 
 function toggleCheck(cb) {
   cb.nextElementSibling.classList.toggle('checked', cb.checked);
+}
+
+function copyShoppingList() {
+  // Build plain text list — unchecked items only, grouped by category
+  const sections = document.querySelectorAll('#shopping-content .shopping-section');
+  const lines = [];
+  sections.forEach(section => {
+    const catTitle = section.querySelector('.shopping-section-title').textContent.trim();
+    const items = [...section.querySelectorAll('.shopping-item')].filter(el => {
+      return !el.querySelector('input[type="checkbox"]').checked;
+    });
+    if (items.length === 0) return;
+    lines.push(catTitle);
+    items.forEach(el => {
+      const name = el.querySelector('label span:first-child').textContent.trim();
+      const qty  = el.querySelector('label .qty').textContent.trim();
+      lines.push(qty ? `  ${name} — ${qty}` : `  ${name}`);
+    });
+    lines.push('');
+  });
+
+  if (lines.length === 0) {
+    alert('Nothing left to copy — everything is checked off!');
+    return;
+  }
+
+  navigator.clipboard.writeText(lines.join('\n').trim()).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.innerHTML = '📋 Copy List', 2000);
+  });
 }
 function uncheckAll() {
   document.querySelectorAll('#shopping-content input[type="checkbox"]').forEach(cb => {
