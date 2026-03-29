@@ -127,6 +127,64 @@
     }
     .recipe-item:hover { background: #f0f7f3; }
     .recipe-item:active { cursor: grabbing; }
+
+    .recipe-info-btn {
+      background: none;
+      border: 1.5px solid #b7dfc9;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #2d6a4f;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .recipe-info-btn:hover { background: #d8f0e4; }
+
+    /* Recipe quick-view popup */
+    .recipe-popup-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+    }
+    .recipe-popup-overlay.open { display: block; }
+    .recipe-popup {
+      position: fixed;
+      left: 310px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 280px;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      overflow: hidden;
+      z-index: 501;
+    }
+    .recipe-popup-header {
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #2d6a4f, #52b788);
+      color: white;
+    }
+    .recipe-popup-header .pop-emoji { font-size: 1.8rem; display: block; }
+    .recipe-popup-header h4 { font-size: 0.9rem; margin-top: 4px; }
+    .recipe-popup-header .pop-meta { font-size: 0.75rem; opacity: 0.85; margin-top: 2px; }
+    .recipe-popup-body { padding: 12px 16px; max-height: 340px; overflow-y: auto; }
+    .recipe-popup-body .pop-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+    .recipe-popup-body ul { list-style: none; font-size: 0.8rem; }
+    .recipe-popup-body ul li {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .recipe-popup-body ul li:last-child { border-bottom: none; }
+    .recipe-popup-body ul li .pop-qty { color: #888; font-size: 0.75rem; }
     .recipe-icon {
       font-size: 1.4rem;
       flex-shrink: 0;
@@ -633,6 +691,20 @@
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary"   onclick="saveRecipe()">Save Recipe</button>
     </div>
+  </div>
+</div>
+
+<!-- Recipe quick-view popup -->
+<div class="recipe-popup-overlay" id="recipe-popup-overlay" onclick="closeRecipePopup()"></div>
+<div class="recipe-popup" id="recipe-popup" style="display:none;">
+  <div class="recipe-popup-header">
+    <span class="pop-emoji" id="pop-emoji"></span>
+    <h4 id="pop-name"></h4>
+    <div class="pop-meta" id="pop-meta"></div>
+  </div>
+  <div class="recipe-popup-body">
+    <div class="pop-tags" id="pop-tags"></div>
+    <ul id="pop-ingredients"></ul>
   </div>
 </div>
 
@@ -1547,7 +1619,12 @@ function renderSidebar(filter = '') {
         <strong>${r.name}</strong>
         <span>⏱ ${r.time} · Serves ${r.serves}</span>
       </div>
-      <div style="display:flex;gap:3px;flex-shrink:0;">${tags}</div>
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
+        ${tags}
+        <button class="recipe-info-btn"
+                onclick="event.stopPropagation(); showRecipePopup(${r.id}, this)"
+                title="View full recipe">ⓘ</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -2056,6 +2133,42 @@ function deleteRecipe(id) {
   DAYS.forEach(d => MEALS.forEach(m => { if (plan[d][m] === id) plan[d][m] = null; }));
   saveToStorage();
   renderAll();
+}
+
+// ══════════════════════════════════
+// RECIPE QUICK-VIEW POPUP
+// ══════════════════════════════════
+function showRecipePopup(id, btn) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+
+  document.getElementById('pop-emoji').textContent = r.emoji;
+  document.getElementById('pop-name').textContent  = r.name;
+  document.getElementById('pop-meta').textContent  = `⏱ ${r.time} · Serves ${r.serves}`;
+  document.getElementById('pop-tags').innerHTML = (r.tags || [])
+    .map(t => `<span class="tag ${tagCssClass(t)}">${tagLabel(t)}</span>`)
+    .join('');
+  document.getElementById('pop-ingredients').innerHTML = r.ingredients
+    .map(i => `<li><span>${i.name}</span><span class="pop-qty">${i.qty}</span></li>`)
+    .join('');
+
+  // Position popup next to the button
+  const popup = document.getElementById('recipe-popup');
+  popup.style.display = 'block';
+  document.getElementById('recipe-popup-overlay').classList.add('open');
+
+  // Adjust vertical position based on button location
+  const rect = btn.getBoundingClientRect();
+  const popupH = popup.offsetHeight;
+  let top = rect.top + rect.height / 2;
+  top = Math.max(10, Math.min(top, window.innerHeight - popupH - 10));
+  popup.style.top = top + 'px';
+  popup.style.transform = 'none';
+}
+
+function closeRecipePopup() {
+  document.getElementById('recipe-popup').style.display = 'none';
+  document.getElementById('recipe-popup-overlay').classList.remove('open');
 }
 
 // ══════════════════════════════════
