@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Food Planner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f0;
+      color: #2d2d2d;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #2d6a4f;
+      color: white;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 { font-size: 1.6rem; letter-spacing: 0.5px; }
+    header p  { font-size: 0.85rem; opacity: 0.8; margin-top: 2px; }
+
+    .header-actions { display: flex; gap: 10px; }
+    .btn {
+      padding: 9px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary   { background: #52b788; color: white; }
+    .btn-primary:hover   { background: #40916c; }
+    .btn-secondary { background: white; color: #2d6a4f; }
+    .btn-secondary:hover { background: #e8f5ee; }
+    .btn-danger    { background: #e63946; color: white; }
+    .btn-danger:hover    { background: #c1121f; }
+    .btn-outline   {
+      background: transparent;
+      border: 2px solid #52b788;
+      color: #2d6a4f;
+    }
+    .btn-outline:hover { background: #e8f5ee; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 16px 28px 0;
+      border-bottom: 2px solid #d8e8df;
+      background: #fff;
+    }
+    .tab {
+      padding: 10px 22px;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #666;
+      transition: background 0.15s, color 0.15s;
+      border: none;
+      background: transparent;
+    }
+    .tab:hover { background: #e8f5ee; color: #2d6a4f; }
+    .tab.active { background: #2d6a4f; color: white; }
+
+    /* ── Main Layout ── */
+    .page { display: none; padding: 24px 28px; }
+    .page.active { display: block; }
+
+    /* ── Planner Page ── */
+    .planner-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    /* Recipe Sidebar */
+    .sidebar {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 14px 18px;
+      background: #f0f7f3;
+      border-bottom: 1px solid #d8e8df;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar-header h3 { font-size: 0.95rem; color: #2d6a4f; }
+    .search-box {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-bottom: 1px solid #eee;
+      font-size: 0.85rem;
+      outline: none;
+      background: #fafafa;
+    }
+    .search-box:focus { background: white; }
+
+    .recipe-list {
+      max-height: calc(100vh - 250px);
+      overflow-y: auto;
+    }
+    .recipe-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .recipe-item:hover { background: #f0f7f3; }
+    .recipe-item:active { cursor: grabbing; }
+    .recipe-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+    .recipe-info { flex: 1; min-width: 0; }
+    .recipe-info strong {
+      display: block;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .recipe-info span {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .tag {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .tag-meat { background: #fde8e8; color: #c0392b; }
+    .tag-fish { background: #e8f0fe; color: #1a56db; }
+    .tag-veg  { background: #e8f5e9; color: #2e7d32; }
+
+    /* Weekly Calendar */
+    .week-grid {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+    .week-header {
+      display: grid;
+      grid-template-columns: 90px repeat(3, 1fr);
+      background: #2d6a4f;
+      color: white;
+    }
+    .week-header div {
+      padding: 10px 8px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-right: 1px solid rgba(255,255,255,0.15);
+    }
+    .week-header div:first-child { border-right: 1px solid rgba(255,255,255,0.3); }
+
+    .meal-row {
+      display: grid;
+      grid-template-columns: 90px repeat(3, 1fr);
+      border-bottom: 1px solid #eee;
+    }
+    .meal-row:last-child { border-bottom: none; }
+    .meal-label {
+      padding: 12px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #2d6a4f;
+      background: #f5faf7;
+      border-right: 2px solid #d8e8df;
+      display: flex;
+      align-items: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meal-cell {
+      border-right: 1px solid #f0f0f0;
+      min-height: 70px;
+      padding: 6px;
+      position: relative;
+      transition: background 0.15s;
+    }
+    .meal-cell:last-child { border-right: none; }
+    .meal-cell.drag-over { background: #e8f5ee; outline: 2px dashed #52b788; }
+
+    .assigned-recipe {
+      background: #e8f5ee;
+      border: 1px solid #b7dfc9;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: default;
+      position: relative;
+    }
+    .assigned-recipe .emoji { font-size: 1rem; }
+    .assigned-recipe .name {
+      flex: 1;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #1b4332;
+    }
+    .assigned-recipe .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #888;
+      padding: 0 2px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .assigned-recipe .remove-btn:hover { color: #e63946; }
+
+    .drop-hint {
+      font-size: 0.7rem;
+      color: #ccc;
+      text-align: center;
+      padding: 4px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Recipes Page ── */
+    .recipes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .recipes-header h2 { font-size: 1.2rem; color: #2d6a4f; }
+
+    .recipes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .recipe-card {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .recipe-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+    .recipe-card-header {
+      padding: 16px;
+      background: linear-gradient(135deg, #2d6a4f, #52b788);
+      color: white;
+      position: relative;
+    }
+    .recipe-card-header .big-emoji {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .recipe-card-header h3 { font-size: 0.95rem; }
+    .recipe-card-header .card-tag {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.25);
+      color: white;
+    }
+    .recipe-card-body { padding: 14px 16px; }
+    .recipe-card-body .meta {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 14px;
+    }
+    .recipe-card-body .meta span { display: flex; align-items: center; gap: 4px; }
+    .ingredients-list {
+      list-style: none;
+      font-size: 0.8rem;
+      color: #444;
+    }
+    .ingredients-list li {
+      padding: 3px 0;
+      border-bottom: 1px solid #f5f5f5;
+      display: flex;
+      justify-content: space-between;
+    }
+    .ingredients-list li:last-child { border-bottom: none; }
+    .ingredient-qty { color: #888; font-size: 0.75rem; }
+    .recipe-card-footer {
+      padding: 10px 16px;
+      border-top: 1px solid #f0f0f0;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Add/Edit Recipe Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 16px;
+      width: 500px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { font-size: 1.1rem; color: #2d6a4f; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: #888;
+      line-height: 1;
+    }
+    .modal-body { padding: 20px 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #444;
+      margin-bottom: 5px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: #52b788; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ingredient-row {
+      display: grid;
+      grid-template-columns: 1fr 100px 30px;
+      gap: 8px;
+      margin-bottom: 6px;
+      align-items: center;
+    }
+    .ingredient-row input { margin: 0; }
+    .remove-ingredient {
+      background: none;
+      border: none;
+      color: #e63946;
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ── Shopping List Page ── */
+    .shopping-layout {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .shopping-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .shopping-header-row h2 { font-size: 1.2rem; color: #2d6a4f; }
+    .shopping-section {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .shopping-section-title {
+      padding: 12px 18px;
+      background: #f0f7f3;
+      border-bottom: 1px solid #d8e8df;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #2d6a4f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .shopping-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 18px;
+      border-bottom: 1px solid #f5f5f5;
+      gap: 12px;
+      font-size: 0.85rem;
+      transition: background 0.1s;
+    }
+    .shopping-item:last-child { border-bottom: none; }
+    .shopping-item:hover { background: #fafff7; }
+    .shopping-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #52b788;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .shopping-item label {
+      flex: 1;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+    }
+    .shopping-item label.checked { text-decoration: line-through; color: #aaa; }
+    .shopping-item .qty { color: #888; font-size: 0.8rem; }
+    .shopping-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+    .shopping-empty .big { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+
+    /* ── Print Styles (shopping list only) ── */
+    @media print {
+      body { background: white; }
+      header, .tabs, .shopping-header-row .btn { display: none !important; }
+      .page { display: block !important; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🥗 Weekly Food Planner</h1>
+    <p>Plan your meals, build your shopping list</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="printPlan()">🖨️ Print Plan</button>
+    <button class="btn btn-primary" onclick="showTab('shopping')">🛒 Shopping List</button>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" id="tab-planner"  onclick="showTab('planner')">📅 Weekly Planner</button>
+  <button class="tab"        id="tab-recipes"  onclick="showTab('recipes')">📖 Recipes</button>
+  <button class="tab"        id="tab-shopping" onclick="showTab('shopping')">🛒 Shopping List</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PLANNER PAGE
+═══════════════════════════════════════════ -->
+<div class="page active" id="page-planner">
+  <div class="planner-layout">
+    <!-- Sidebar: recipe list -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3>📖 My Recipes</h3>
+        <span id="recipe-count" style="font-size:0.75rem;color:#666;"></span>
+      </div>
+      <input class="search-box" type="text" placeholder="🔍 Search recipes…" oninput="filterSidebar(this.value)" />
+      <div class="recipe-list" id="sidebar-recipe-list"></div>
+    </div>
+
+    <!-- Week grid -->
+    <div class="week-grid">
+      <div class="week-header">
+        <div></div>
+        <div>Breakfast</div><div>Lunch</div><div>Dinner</div>
+      </div>
+      <div id="meal-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     RECIPES PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-recipes">
+  <div class="recipes-header">
+    <h2>📖 My Recipes (<span id="recipe-total">0</span>)</h2>
+    <button class="btn btn-primary" onclick="openAddRecipeModal()">＋ Add Recipe</button>
+  </div>
+  <div class="recipes-grid" id="recipes-grid"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SHOPPING LIST PAGE
+═══════════════════════════════════════════ -->
+<div class="page" id="page-shopping">
+  <div class="shopping-layout">
+    <div class="shopping-header-row">
+      <h2>🛒 Shopping List</h2>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline" onclick="uncheckAll()">↺ Uncheck All</button>
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print List</button>
+      </div>
+    </div>
+    <div id="shopping-content"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     ADD / EDIT RECIPE MODAL
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="recipe-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Add Recipe</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Recipe Name</label>
+          <input type="text" id="modal-name" placeholder="e.g. Spaghetti Bolognese" />
+        </div>
+        <div class="form-group">
+          <label>Emoji Icon</label>
+          <input type="text" id="modal-emoji" placeholder="🍝" maxlength="2" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="modal-category">
+            <option value="meat">🥩 Meat</option>
+            <option value="fish">🐟 Fish</option>
+            <option value="veg">🥦 Vegetarian</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Serves</label>
+          <input type="number" id="modal-serves" value="4" min="1" max="20" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Cook Time</label>
+        <input type="text" id="modal-time" placeholder="e.g. 30 mins" />
+      </div>
+      <div class="form-group">
+        <label>Ingredients</label>
+        <div id="modal-ingredients"></div>
+        <button class="btn btn-outline" style="margin-top:8px;padding:6px 12px;font-size:0.8rem;" onclick="addIngredientRow()">＋ Add Ingredient</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary"   onclick="saveRecipe()">Save Recipe</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════
+// DATA
+// ══════════════════════════════════
+
+const DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MEALS = ['Breakfast','Lunch','Dinner'];
+
+// ══════════════════════════════════
+// PERSISTENCE (localStorage)
+// ══════════════════════════════════
+const STORAGE_RECIPES = 'foodplanner_recipes';
+const STORAGE_PLAN    = 'foodplanner_plan';
+const DATA_VERSION    = 'pcos-v3'; // bump this to reset recipes to new defaults
+
+function saveToStorage() {
+  localStorage.setItem(STORAGE_RECIPES, JSON.stringify(recipes));
+  localStorage.setItem(STORAGE_PLAN,    JSON.stringify(plan));
+}
+
+// plan[day][meal] = recipeId or null
+let plan = {};
+DAYS.forEach(d => {
+  plan[d] = {};
+  MEALS.forEach(m => plan[d][m] = null);
+});
+
+let editingRecipeId = null;
+
+// ── PCOS-friendly default recipes ──
+// Focus: low GI, anti-inflammatory, high protein, healthy fats
+const defaultRecipes = [
+  {
+    id: 1,
+    name: 'Turmeric Baked Salmon',
+    emoji: '🐟',
+    category: 'fish',
+    serves: 4,
+    time: '30 mins',
+    ingredients: [
+      { name: 'Salmon fillets', qty: '4' },
+      { name: 'Ground turmeric', qty: '1 tsp' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Olive oil', qty: '2 tbsp' },
+      { name: 'Broccoli florets', qty: '300g' },
+      { name: 'Cherry tomatoes', qty: '200g' },
+      { name: 'Fresh ginger', qty: '1 thumb' },
+    ]
+  },
+  {
+    id: 2,
+    name: 'Chickpea & Spinach Curry',
+    emoji: '🍛',
+    category: 'veg',
+    serves: 4,
+    time: '35 mins',
+    ingredients: [
+      { name: 'Chickpeas', qty: '2 cans' },
+      { name: 'Spinach', qty: '200g' },
+      { name: 'Tinned chopped tomatoes', qty: '1 can' },
+      { name: 'Coconut milk', qty: '400ml' },
+      { name: 'Onion', qty: '1' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Fresh ginger', qty: '1 thumb' },
+      { name: 'Ground turmeric', qty: '1 tsp' },
+      { name: 'Ground cumin', qty: '1 tsp' },
+      { name: 'Brown rice', qty: '300g' },
+    ]
+  },
+  {
+    id: 3,
+    name: 'Turkey & Broccoli Quinoa Bowl',
+    emoji: '🥗',
+    category: 'meat',
+    serves: 4,
+    time: '30 mins',
+    ingredients: [
+      { name: 'Turkey breast mince', qty: '500g' },
+      { name: 'Quinoa', qty: '300g' },
+      { name: 'Broccoli florets', qty: '300g' },
+      { name: 'Mixed peppers', qty: '2' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Fresh ginger', qty: '1 thumb' },
+      { name: 'Soy sauce', qty: '2 tbsp' },
+      { name: 'Sesame oil', qty: '1 tbsp' },
+      { name: 'Spring onions', qty: '4' },
+    ]
+  },
+  {
+    id: 4,
+    name: 'Greek Yogurt Berry Parfait',
+    emoji: '🫐',
+    category: 'veg',
+    serves: 2,
+    time: '10 mins',
+    ingredients: [
+      { name: 'Greek yogurt (full fat)', qty: '400g' },
+      { name: 'Mixed berries', qty: '200g' },
+      { name: 'Chia seeds', qty: '2 tbsp' },
+      { name: 'Flaxseeds (ground)', qty: '1 tbsp' },
+      { name: 'Walnuts', qty: '30g' },
+      { name: 'Ground cinnamon', qty: '½ tsp' },
+      { name: 'Honey', qty: '1 tsp' },
+    ]
+  },
+  {
+    id: 5,
+    name: 'Spinach & Feta Omelette',
+    emoji: '🍳',
+    category: 'veg',
+    serves: 2,
+    time: '15 mins',
+    ingredients: [
+      { name: 'Eggs', qty: '4' },
+      { name: 'Spinach', qty: '100g' },
+      { name: 'Feta cheese', qty: '80g' },
+      { name: 'Cherry tomatoes', qty: '100g' },
+      { name: 'Olive oil', qty: '1 tbsp' },
+      { name: 'Ground turmeric', qty: '¼ tsp' },
+      { name: 'Spring onions', qty: '2' },
+    ]
+  },
+  {
+    id: 6,
+    name: 'Overnight Oats with Berries',
+    emoji: '🥣',
+    category: 'veg',
+    serves: 2,
+    time: '5 mins + overnight',
+    ingredients: [
+      { name: 'Rolled oats', qty: '150g' },
+      { name: 'Almond milk (unsweetened)', qty: '300ml' },
+      { name: 'Chia seeds', qty: '2 tbsp' },
+      { name: 'Mixed berries', qty: '150g' },
+      { name: 'Almond butter', qty: '2 tbsp' },
+      { name: 'Ground cinnamon', qty: '½ tsp' },
+      { name: 'Walnuts', qty: '20g' },
+    ]
+  },
+  {
+    id: 7,
+    name: 'Roasted Veg & Quinoa Bowl',
+    emoji: '🥙',
+    category: 'veg',
+    serves: 4,
+    time: '35 mins',
+    ingredients: [
+      { name: 'Quinoa', qty: '300g' },
+      { name: 'Courgette', qty: '2' },
+      { name: 'Mixed peppers', qty: '3' },
+      { name: 'Red onion', qty: '1' },
+      { name: 'Cherry tomatoes', qty: '200g' },
+      { name: 'Feta cheese', qty: '100g' },
+      { name: 'Olive oil', qty: '3 tbsp' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Garlic cloves', qty: '2' },
+    ]
+  },
+  {
+    id: 8,
+    name: 'Red Lentil & Vegetable Soup',
+    emoji: '🍲',
+    category: 'veg',
+    serves: 4,
+    time: '40 mins',
+    ingredients: [
+      { name: 'Red lentils', qty: '250g' },
+      { name: 'Carrots', qty: '3' },
+      { name: 'Celery sticks', qty: '3' },
+      { name: 'Onion', qty: '1' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Vegetable stock', qty: '1.2 litres' },
+      { name: 'Ground cumin', qty: '1 tsp' },
+      { name: 'Ground turmeric', qty: '1 tsp' },
+      { name: 'Spinach', qty: '100g' },
+    ]
+  },
+  {
+    id: 9,
+    name: 'Salmon & Avocado Salad',
+    emoji: '🥑',
+    category: 'fish',
+    serves: 2,
+    time: '15 mins',
+    ingredients: [
+      { name: 'Salmon fillets', qty: '2' },
+      { name: 'Avocado', qty: '1' },
+      { name: 'Mixed salad leaves', qty: '100g' },
+      { name: 'Cucumber', qty: '½' },
+      { name: 'Cherry tomatoes', qty: '150g' },
+      { name: 'Pumpkin seeds', qty: '2 tbsp' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Olive oil', qty: '2 tbsp' },
+    ]
+  },
+  {
+    id: 10,
+    name: 'Baked Chicken with Sweet Potato',
+    emoji: '🍗',
+    category: 'meat',
+    serves: 4,
+    time: '45 mins',
+    ingredients: [
+      { name: 'Chicken breast', qty: '4' },
+      { name: 'Sweet potato', qty: '600g' },
+      { name: 'Broccoli florets', qty: '300g' },
+      { name: 'Garlic cloves', qty: '4' },
+      { name: 'Olive oil', qty: '3 tbsp' },
+      { name: 'Ground turmeric', qty: '1 tsp' },
+      { name: 'Ground cumin', qty: '1 tsp' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Fresh coriander', qty: 'handful' },
+    ]
+  },
+  {
+    id: 11,
+    name: 'Turkey Meatballs & Courgetti',
+    emoji: '🍝',
+    category: 'meat',
+    serves: 4,
+    time: '35 mins',
+    ingredients: [
+      { name: 'Turkey mince', qty: '500g' },
+      { name: 'Courgette', qty: '4 large' },
+      { name: 'Tinned chopped tomatoes', qty: '1 can' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Onion', qty: '1' },
+      { name: 'Egg', qty: '1' },
+      { name: 'Dried oregano', qty: '1 tsp' },
+      { name: 'Parmesan', qty: '40g' },
+      { name: 'Olive oil', qty: '2 tbsp' },
+    ]
+  },
+  {
+    id: 12,
+    name: 'Prawn & Avocado Buddha Bowl',
+    emoji: '🍤',
+    category: 'fish',
+    serves: 2,
+    time: '20 mins',
+    ingredients: [
+      { name: 'King prawns', qty: '300g' },
+      { name: 'Quinoa', qty: '200g' },
+      { name: 'Avocado', qty: '1' },
+      { name: 'Cucumber', qty: '½' },
+      { name: 'Edamame beans', qty: '100g' },
+      { name: 'Sesame seeds', qty: '1 tbsp' },
+      { name: 'Soy sauce', qty: '2 tbsp' },
+      { name: 'Fresh ginger', qty: '1 thumb' },
+      { name: 'Lime', qty: '1' },
+    ]
+  },
+
+  // ── Original classics ──
+  {
+    id: 13,
+    name: 'Spaghetti Bolognese',
+    emoji: '🍝',
+    category: 'meat',
+    serves: 4,
+    time: '45 mins',
+    ingredients: [
+      { name: 'Spaghetti', qty: '400g' },
+      { name: 'Beef mince', qty: '500g' },
+      { name: 'Tinned chopped tomatoes', qty: '2 cans' },
+      { name: 'Onion', qty: '1 large' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Tomato purée', qty: '2 tbsp' },
+      { name: 'Olive oil', qty: '2 tbsp' },
+      { name: 'Dried oregano', qty: '1 tsp' },
+      { name: 'Parmesan', qty: '50g' },
+    ]
+  },
+  {
+    id: 14,
+    name: 'Chicken Stir Fry',
+    emoji: '🥘',
+    category: 'meat',
+    serves: 4,
+    time: '20 mins',
+    ingredients: [
+      { name: 'Chicken breast', qty: '500g' },
+      { name: 'Mixed peppers', qty: '3' },
+      { name: 'Broccoli florets', qty: '200g' },
+      { name: 'Soy sauce', qty: '3 tbsp' },
+      { name: 'Sesame oil', qty: '1 tbsp' },
+      { name: 'Garlic cloves', qty: '2' },
+      { name: 'Fresh ginger', qty: '1 thumb' },
+      { name: 'Rice noodles', qty: '300g' },
+      { name: 'Spring onions', qty: '4' },
+    ]
+  },
+  {
+    id: 15,
+    name: 'Salmon with Roasted Veg',
+    emoji: '🐟',
+    category: 'fish',
+    serves: 4,
+    time: '35 mins',
+    ingredients: [
+      { name: 'Salmon fillets', qty: '4' },
+      { name: 'Cherry tomatoes', qty: '200g' },
+      { name: 'Courgette', qty: '2' },
+      { name: 'Red onion', qty: '1' },
+      { name: 'Olive oil', qty: '3 tbsp' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Garlic cloves', qty: '2' },
+      { name: 'Fresh thyme', qty: '4 sprigs' },
+    ]
+  },
+  {
+    id: 16,
+    name: 'Chicken Tikka Masala',
+    emoji: '🍛',
+    category: 'meat',
+    serves: 4,
+    time: '50 mins',
+    ingredients: [
+      { name: 'Chicken breast', qty: '600g' },
+      { name: 'Tikka masala paste', qty: '4 tbsp' },
+      { name: 'Coconut milk', qty: '400ml' },
+      { name: 'Tinned chopped tomatoes', qty: '1 can' },
+      { name: 'Onion', qty: '1 large' },
+      { name: 'Natural yoghurt', qty: '100ml' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Basmati rice', qty: '300g' },
+      { name: 'Fresh coriander', qty: '1 bunch' },
+    ]
+  },
+  {
+    id: 17,
+    name: 'Vegetable Curry',
+    emoji: '🥦',
+    category: 'veg',
+    serves: 4,
+    time: '40 mins',
+    ingredients: [
+      { name: 'Chickpeas', qty: '2 cans' },
+      { name: 'Tinned chopped tomatoes', qty: '1 can' },
+      { name: 'Coconut milk', qty: '400ml' },
+      { name: 'Spinach', qty: '200g' },
+      { name: 'Onion', qty: '1' },
+      { name: 'Curry powder', qty: '2 tbsp' },
+      { name: 'Garlic cloves', qty: '3' },
+      { name: 'Basmati rice', qty: '300g' },
+      { name: 'Vegetable stock', qty: '200ml' },
+    ]
+  },
+  {
+    id: 18,
+    name: 'Beef Tacos',
+    emoji: '🌮',
+    category: 'meat',
+    serves: 4,
+    time: '25 mins',
+    ingredients: [
+      { name: 'Beef mince', qty: '500g' },
+      { name: 'Taco shells', qty: '12' },
+      { name: 'Taco seasoning', qty: '1 packet' },
+      { name: 'Iceberg lettuce', qty: '½ head' },
+      { name: 'Cheddar cheese', qty: '100g' },
+      { name: 'Soured cream', qty: '150ml' },
+      { name: 'Salsa', qty: '200g' },
+      { name: 'Avocado', qty: '2' },
+      { name: 'Lime', qty: '1' },
+    ]
+  },
+  {
+    id: 19,
+    name: 'Mushroom Risotto',
+    emoji: '🍄',
+    category: 'veg',
+    serves: 4,
+    time: '40 mins',
+    ingredients: [
+      { name: 'Arborio rice', qty: '350g' },
+      { name: 'Mixed mushrooms', qty: '400g' },
+      { name: 'Vegetable stock', qty: '1.5 litres' },
+      { name: 'White wine', qty: '150ml' },
+      { name: 'Parmesan', qty: '80g' },
+      { name: 'Onion', qty: '1' },
+      { name: 'Garlic cloves', qty: '2' },
+      { name: 'Butter', qty: '40g' },
+      { name: 'Fresh thyme', qty: '4 sprigs' },
+    ]
+  },
+  {
+    id: 20,
+    name: 'Fish and Chips',
+    emoji: '🍟',
+    category: 'fish',
+    serves: 4,
+    time: '45 mins',
+    ingredients: [
+      { name: 'Cod or haddock fillets', qty: '4' },
+      { name: 'Plain flour', qty: '200g' },
+      { name: 'Beer or sparkling water', qty: '300ml' },
+      { name: 'Baking powder', qty: '1 tsp' },
+      { name: 'Maris Piper potatoes', qty: '1kg' },
+      { name: 'Sunflower oil', qty: 'for frying' },
+      { name: 'Tartare sauce', qty: '100g' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Mushy peas', qty: '1 can' },
+    ]
+  },
+  {
+    id: 21,
+    name: 'Avocado Toast',
+    emoji: '🥑',
+    category: 'veg',
+    serves: 2,
+    time: '10 mins',
+    ingredients: [
+      { name: 'Sourdough bread', qty: '4 slices' },
+      { name: 'Avocado', qty: '2' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Cherry tomatoes', qty: '100g' },
+      { name: 'Chilli flakes', qty: 'pinch' },
+      { name: 'Olive oil', qty: '1 tbsp' },
+      { name: 'Salt & pepper', qty: 'to taste' },
+    ]
+  },
+  {
+    id: 22,
+    name: 'Prawn Linguine',
+    emoji: '🍤',
+    category: 'fish',
+    serves: 4,
+    time: '25 mins',
+    ingredients: [
+      { name: 'Linguine', qty: '400g' },
+      { name: 'King prawns', qty: '400g' },
+      { name: 'Garlic cloves', qty: '4' },
+      { name: 'Cherry tomatoes', qty: '300g' },
+      { name: 'White wine', qty: '100ml' },
+      { name: 'Olive oil', qty: '3 tbsp' },
+      { name: 'Fresh parsley', qty: '1 bunch' },
+      { name: 'Chilli flakes', qty: '½ tsp' },
+      { name: 'Lemon', qty: '1' },
+    ]
+  },
+  {
+    id: 23,
+    name: 'Greek Salad',
+    emoji: '🥗',
+    category: 'veg',
+    serves: 4,
+    time: '15 mins',
+    ingredients: [
+      { name: 'Cucumber', qty: '1 large' },
+      { name: 'Cherry tomatoes', qty: '300g' },
+      { name: 'Red onion', qty: '1' },
+      { name: 'Kalamata olives', qty: '100g' },
+      { name: 'Feta cheese', qty: '200g' },
+      { name: 'Olive oil', qty: '3 tbsp' },
+      { name: 'Dried oregano', qty: '1 tsp' },
+      { name: 'Lemon juice', qty: '2 tbsp' },
+    ]
+  },
+  {
+    id: 24,
+    name: 'Roast Chicken',
+    emoji: '🍗',
+    category: 'meat',
+    serves: 6,
+    time: '1 hr 30 mins',
+    ingredients: [
+      { name: 'Whole chicken', qty: '1.8kg' },
+      { name: 'Roasting potatoes', qty: '1kg' },
+      { name: 'Carrots', qty: '4' },
+      { name: 'Onion', qty: '2' },
+      { name: 'Butter', qty: '50g' },
+      { name: 'Garlic cloves', qty: '4' },
+      { name: 'Lemon', qty: '1' },
+      { name: 'Fresh rosemary', qty: '3 sprigs' },
+      { name: 'Chicken stock', qty: '200ml' },
+    ]
+  },
+  {
+    id: 25,
+    name: 'Courgetti Bolognese',
+    emoji: '🍝',
+    category: 'meat',
+    serves: 4,
+    time: '40 mins',
+    ingredients: [
+      { name: 'Coconut oil or olive oil', qty: '1 tsp' },
+      { name: 'Red onion', qty: '1' },
+      { name: 'Carrot', qty: '1' },
+      { name: 'Celery stalk', qty: '1' },
+      { name: 'Garlic cloves', qty: '2-3' },
+      { name: 'Red pepper', qty: '1' },
+      { name: 'Diced pancetta', qty: '100g' },
+      { name: 'Beef mince', qty: '400g' },
+      { name: 'Walnuts, finely chopped', qty: '50g' },
+      { name: 'Beef bone stock (or red wine)', qty: '200ml' },
+      { name: 'Tinned chopped tomatoes', qty: '1 can' },
+      { name: 'Tomato purée', qty: '1 tbsp' },
+      { name: 'Mushrooms, diced', qty: '75g' },
+      { name: 'Dried oregano', qty: '1 heaped tsp' },
+      { name: 'Dried thyme', qty: '½ tsp' },
+      { name: 'Balsamic vinegar', qty: '1 tbsp' },
+      { name: 'Ground cinnamon', qty: '½ tsp' },
+      { name: 'Paprika', qty: '½ tsp' },
+      { name: 'Courgettes, spiralized', qty: '400g' },
+      { name: 'Chilli flakes (optional)', qty: 'to taste' },
+    ]
+  },
+];
+
+// Load saved data or fall back to defaults
+// If DATA_VERSION has changed, reset recipes to new defaults
+const storedVersion = localStorage.getItem('foodplanner_version');
+if (storedVersion !== DATA_VERSION) {
+  localStorage.removeItem(STORAGE_RECIPES);
+  localStorage.removeItem(STORAGE_PLAN);
+  localStorage.setItem('foodplanner_version', DATA_VERSION);
+}
+const savedRecipes = localStorage.getItem(STORAGE_RECIPES);
+const savedPlan    = localStorage.getItem(STORAGE_PLAN);
+const recipes = savedRecipes ? JSON.parse(savedRecipes) : defaultRecipes;
+if (savedPlan) {
+  const loaded = JSON.parse(savedPlan);
+  DAYS.forEach(d => MEALS.forEach(m => { if (loaded[d]) plan[d][m] = loaded[d][m] ?? null; }));
+}
+
+// ══════════════════════════════════
+// TAB NAVIGATION
+// ══════════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'shopping') renderShoppingList();
+}
+
+// ══════════════════════════════════
+// RENDER SIDEBAR
+// ══════════════════════════════════
+function filterSidebar(query) { renderSidebar(query.toLowerCase()); }
+
+function renderSidebar(filter = '') {
+  const list = document.getElementById('sidebar-recipe-list');
+  const count = document.getElementById('recipe-count');
+  const filtered = recipes.filter(r => r.name.toLowerCase().includes(filter));
+  count.textContent = `${filtered.length} recipes`;
+  list.innerHTML = filtered.map(r => `
+    <div class="recipe-item"
+         draggable="true"
+         data-id="${r.id}"
+         ondragstart="onDragStart(event, ${r.id})"
+         title="Drag to assign to a day">
+      <span class="recipe-icon">${r.emoji}</span>
+      <div class="recipe-info">
+        <strong>${r.name}</strong>
+        <span>⏱ ${r.time} · Serves ${r.serves}</span>
+      </div>
+      <span class="tag tag-${r.category}">${r.category === 'meat' ? 'Meat' : r.category === 'fish' ? 'Fish' : 'Veg'}</span>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════
+// RENDER WEEK GRID
+// ══════════════════════════════════
+function renderGrid() {
+  const grid = document.getElementById('meal-grid');
+  grid.innerHTML = DAYS.map(day => `
+    <div class="meal-row">
+      <div class="meal-label">${day}</div>
+      ${MEALS.map(meal => {
+        const rid = plan[day][meal];
+        const r   = rid ? recipes.find(x => x.id === rid) : null;
+        return `
+          <div class="meal-cell"
+               data-day="${day}" data-meal="${meal}"
+               ondragover="onDragOver(event)"
+               ondragleave="onDragLeave(event)"
+               ondrop="onDrop(event, '${day}', '${meal}')">
+            ${r
+              ? `<div class="assigned-recipe">
+                   <span class="emoji">${r.emoji}</span>
+                   <span class="name">${r.name}</span>
+                   <button class="remove-btn" onclick="removeFromPlan('${day}','${meal}')" title="Remove">×</button>
+                 </div>`
+              : `<div class="drop-hint">Drop here</div>`
+            }
+          </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════
+// DRAG & DROP
+// ══════════════════════════════════
+let draggingId = null;
+
+function onDragStart(e, id) {
+  draggingId = id;
+  e.dataTransfer.effectAllowed = 'copy';
+}
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function onDrop(e, day, meal) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (draggingId) {
+    plan[day][meal] = draggingId;
+    draggingId = null;
+    saveToStorage();
+    renderGrid();
+  }
+}
+function removeFromPlan(day, meal) {
+  plan[day][meal] = null;
+  saveToStorage();
+  renderGrid();
+}
+
+// ══════════════════════════════════
+// RENDER RECIPES PAGE
+// ══════════════════════════════════
+function renderRecipes() {
+  document.getElementById('recipe-total').textContent = recipes.length;
+  const grid = document.getElementById('recipes-grid');
+  grid.innerHTML = recipes.map(r => `
+    <div class="recipe-card">
+      <div class="recipe-card-header">
+        <span class="big-emoji">${r.emoji}</span>
+        <h3>${r.name}</h3>
+        <span class="card-tag">${r.category === 'meat' ? '🥩 Meat' : r.category === 'fish' ? '🐟 Fish' : '🥦 Veg'}</span>
+      </div>
+      <div class="recipe-card-body">
+        <div class="meta">
+          <span>⏱ ${r.time}</span>
+          <span>👥 Serves ${r.serves}</span>
+        </div>
+        <ul class="ingredients-list">
+          ${r.ingredients.slice(0,5).map(i => `
+            <li>
+              <span>${i.name}</span>
+              <span class="ingredient-qty">${i.qty}</span>
+            </li>
+          `).join('')}
+          ${r.ingredients.length > 5 ? `<li style="color:#aaa;font-size:0.75rem;">+${r.ingredients.length - 5} more…</li>` : ''}
+        </ul>
+      </div>
+      <div class="recipe-card-footer">
+        <button class="btn btn-outline" style="flex:1;padding:7px;" onclick="openEditRecipeModal(${r.id})">✏️ Edit</button>
+        <button class="btn btn-danger"  style="padding:7px 12px;" onclick="deleteRecipe(${r.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════
+// SHOPPING LIST
+// ══════════════════════════════════
+// ══════════════════════════════════
+// INGREDIENT CATEGORISATION
+// ══════════════════════════════════
+const INGREDIENT_CATEGORIES = [
+  {
+    key: 'meat',
+    label: 'Meat & Fish',
+    emoji: '🥩',
+    keywords: ['chicken','beef','mince','salmon','cod','haddock','prawn','fish','lamb','pork',
+                'bacon','sausage','turkey','tuna','anchov','chorizo','duck','steak','whole chicken']
+  },
+  {
+    key: 'dairy',
+    label: 'Dairy & Eggs',
+    emoji: '🧀',
+    keywords: ['cheese','parmesan','feta','cheddar','mozzarella','yoghurt','cream','butter',
+                'milk','egg','crème','mascarpone','ricotta','soured cream','double cream']
+  },
+  {
+    key: 'veg',
+    label: 'Vegetables',
+    emoji: '🥦',
+    keywords: ['onion','garlic','pepper','broccoli','courgette','spinach','lettuce','mushroom',
+                'potato','carrot','cucumber','ginger','spring onion','leek','celery','cauliflower',
+                'aubergine','kale','cabbage','pea','sweetcorn','asparagus','tomato','cherry tomato',
+                'red onion','mixed pepper','floret']
+  },
+  {
+    key: 'fruit',
+    label: 'Fruit',
+    emoji: '🍋',
+    keywords: ['lemon','lime','avocado','apple','banana','orange','mango','berry','grape',
+                'pear','peach','pineapple','melon','strawberr']
+  },
+  {
+    key: 'tins',
+    label: 'Tins & Jars',
+    emoji: '🫙',
+    keywords: ['tinned','coconut milk','chickpea','salsa','mushy pea','olive','passata',
+                'tomato purée','tomato puree','baked bean','kidney bean','lentil','stock cube',
+                'chopped tomato','pesto','jar']
+  },
+  {
+    key: 'grains',
+    label: 'Pasta, Rice & Grains',
+    emoji: '🌾',
+    keywords: ['spaghetti','pasta','rice','noodle','linguine','arborio','flour','bread',
+                'taco shell','wrap','tortilla','couscous','quinoa','oat','cereal','sourdough',
+                'baguette','roll','pitta']
+  },
+  {
+    key: 'herbs',
+    label: 'Herbs & Spices',
+    emoji: '🌿',
+    keywords: ['oregano','thyme','coriander','parsley','rosemary','curry','seasoning','chilli',
+                'cumin','paprika','turmeric','cinnamon','basil','bay','sage','mint','dill',
+                'tarragon','cardamom','clove','nutmeg','allspice','baking powder','vanilla',
+                'tikka','masala','spice','dried','fresh herb','paste']
+  },
+  {
+    key: 'oils',
+    label: 'Oils, Sauces & Condiments',
+    emoji: '🛢️',
+    keywords: ['oil','soy sauce','sesame','vinegar','ketchup','mustard','mayonnaise','sauce',
+                'dressing','worcestershire','tartare','stock','broth','wine','beer','honey',
+                'syrup','marmite','tabasco','fish sauce','oyster sauce','hoisin','sriracha']
+  },
+  {
+    key: 'other',
+    label: 'Other',
+    emoji: '🛒',
+    keywords: []
+  },
+];
+
+function categoriseIngredient(name) {
+  const lower = name.toLowerCase();
+  for (const cat of INGREDIENT_CATEGORIES) {
+    if (cat.key === 'other') continue;
+    if (cat.keywords.some(kw => lower.includes(kw))) return cat.key;
+  }
+  return 'other';
+}
+
+function renderShoppingList() {
+  const container = document.getElementById('shopping-content');
+  // Collect all planned recipe IDs
+  const plannedIds = new Set();
+  DAYS.forEach(d => MEALS.forEach(m => { if (plan[d][m]) plannedIds.add(plan[d][m]); }));
+
+  if (plannedIds.size === 0) {
+    container.innerHTML = `
+      <div class="shopping-empty">
+        <span class="big">🛒</span>
+        <p>No meals planned yet.</p>
+        <p style="margin-top:8px;">Head to the <strong>Weekly Planner</strong> tab and drag recipes onto the calendar.</p>
+      </div>`;
+    return;
+  }
+
+  // Aggregate ingredients
+  const agg = {};
+  plannedIds.forEach(id => {
+    const r = recipes.find(x => x.id === id);
+    if (!r) return;
+    r.ingredients.forEach(ing => {
+      const key = ing.name.toLowerCase();
+      if (!agg[key]) agg[key] = { name: ing.name, quantities: [], catKey: categoriseIngredient(ing.name) };
+      agg[key].quantities.push(ing.qty);
+    });
+  });
+
+  // Group by category, preserving display order
+  const groups = {};
+  INGREDIENT_CATEGORIES.forEach(cat => groups[cat.key] = []);
+  Object.values(agg).sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
+    groups[item.catKey].push(item);
+  });
+
+  container.innerHTML = INGREDIENT_CATEGORIES
+    .filter(cat => groups[cat.key].length > 0)
+    .map(cat => {
+      const items = groups[cat.key];
+      return `
+        <div class="shopping-section">
+          <div class="shopping-section-title">${cat.emoji} ${cat.label}</div>
+          ${items.map((item, i) => {
+            const uid = `chk-${cat.key}-${i}`;
+            const qty = [...new Set(item.quantities)].join(', ');
+            return `
+            <div class="shopping-item">
+              <input type="checkbox" id="${uid}" onchange="toggleCheck(this)" />
+              <label for="${uid}">
+                <span>${item.name}</span>
+                <span class="qty">${qty}</span>
+              </label>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+}
+
+function toggleCheck(cb) {
+  cb.nextElementSibling.classList.toggle('checked', cb.checked);
+}
+function uncheckAll() {
+  document.querySelectorAll('#shopping-content input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    cb.nextElementSibling.classList.remove('checked');
+  });
+}
+
+// ══════════════════════════════════
+// PRINT
+// ══════════════════════════════════
+function printPlan() {
+  // Build a self-contained print window with just the weekly grid
+  const gridHTML = document.getElementById('meal-grid').innerHTML;
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Weekly Meal Plan</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 24px; }
+    h1 { font-size: 1.2rem; color: #2d6a4f; margin-bottom: 16px; }
+    .week-grid { border: 1px solid #ccc; border-radius: 8px; overflow: hidden; width: 100%; }
+    .week-header {
+      display: grid;
+      grid-template-columns: 90px repeat(3, 1fr);
+      background: #2d6a4f;
+      color: white;
+    }
+    .week-header div {
+      padding: 8px;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-right: 1px solid rgba(255,255,255,0.2);
+    }
+    .meal-row {
+      display: grid;
+      grid-template-columns: 90px repeat(3, 1fr);
+      border-bottom: 1px solid #ddd;
+    }
+    .meal-row:last-child { border-bottom: none; }
+    .meal-label {
+      padding: 10px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #2d6a4f;
+      background: #f5faf7;
+      border-right: 2px solid #cce0d4;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+    }
+    .meal-cell {
+      padding: 8px;
+      min-height: 56px;
+      border-right: 1px solid #eee;
+    }
+    .meal-cell:last-child { border-right: none; }
+    .assigned-recipe {
+      background: #e8f5ee;
+      border: 1px solid #b7dfc9;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .assigned-recipe .name { font-weight: 600; color: #1b4332; }
+    .assigned-recipe .remove-btn { display: none; }
+    .drop-hint { display: none; }
+  </style>
+</head>
+<body>
+  <h1>🥗 Weekly Meal Plan</h1>
+  <div class="week-grid">
+    <div class="week-header">
+      <div></div>
+      <div>Breakfast</div>
+      <div>Lunch</div>
+      <div>Dinner</div>
+    </div>
+    <div id="grid">${gridHTML}</div>
+  </div>
+  <script>window.onload = function() { window.print(); window.close(); }<\/script>
+</body>
+</html>`);
+  win.document.close();
+}
+
+// ══════════════════════════════════
+// ADD / EDIT RECIPE MODAL
+// ══════════════════════════════════
+function openAddRecipeModal() {
+  editingRecipeId = null;
+  document.getElementById('modal-title').textContent = 'Add Recipe';
+  document.getElementById('modal-name').value    = '';
+  document.getElementById('modal-emoji').value   = '🍽️';
+  document.getElementById('modal-category').value = 'meat';
+  document.getElementById('modal-serves').value  = '4';
+  document.getElementById('modal-time').value    = '';
+  document.getElementById('modal-ingredients').innerHTML = '';
+  addIngredientRow();
+  addIngredientRow();
+  document.getElementById('recipe-modal').classList.add('open');
+}
+
+function openEditRecipeModal(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
+  editingRecipeId = id;
+  document.getElementById('modal-title').textContent = 'Edit Recipe';
+  document.getElementById('modal-name').value    = r.name;
+  document.getElementById('modal-emoji').value   = r.emoji;
+  document.getElementById('modal-category').value = r.category;
+  document.getElementById('modal-serves').value  = r.serves;
+  document.getElementById('modal-time').value    = r.time;
+  const ing = document.getElementById('modal-ingredients');
+  ing.innerHTML = '';
+  r.ingredients.forEach(i => addIngredientRow(i.name, i.qty));
+  document.getElementById('recipe-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('recipe-modal').classList.remove('open');
+}
+
+function addIngredientRow(name = '', qty = '') {
+  const container = document.getElementById('modal-ingredients');
+  const row = document.createElement('div');
+  row.className = 'ingredient-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Ingredient" value="${name}" />
+    <input type="text" placeholder="Qty" value="${qty}" />
+    <button class="remove-ingredient" onclick="this.parentElement.remove()">−</button>
+  `;
+  container.appendChild(row);
+}
+
+function saveRecipe() {
+  const name = document.getElementById('modal-name').value.trim();
+  if (!name) { alert('Please enter a recipe name.'); return; }
+  const ingredients = [];
+  document.querySelectorAll('#modal-ingredients .ingredient-row').forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const n = inputs[0].value.trim();
+    const q = inputs[1].value.trim();
+    if (n) ingredients.push({ name: n, qty: q || '' });
+  });
+
+  const data = {
+    name,
+    emoji:    document.getElementById('modal-emoji').value.trim() || '🍽️',
+    category: document.getElementById('modal-category').value,
+    serves:   parseInt(document.getElementById('modal-serves').value) || 4,
+    time:     document.getElementById('modal-time').value.trim() || 'N/A',
+    ingredients,
+  };
+
+  if (editingRecipeId) {
+    const idx = recipes.findIndex(r => r.id === editingRecipeId);
+    if (idx !== -1) recipes[idx] = { ...recipes[idx], ...data };
+  } else {
+    data.id = Date.now();
+    recipes.push(data);
+  }
+
+  closeModal();
+  saveToStorage();
+  renderAll();
+}
+
+function deleteRecipe(id) {
+  if (!confirm('Delete this recipe?')) return;
+  const idx = recipes.findIndex(r => r.id === id);
+  if (idx !== -1) recipes.splice(idx, 1);
+  // Remove from plan too
+  DAYS.forEach(d => MEALS.forEach(m => { if (plan[d][m] === id) plan[d][m] = null; }));
+  saveToStorage();
+  renderAll();
+}
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+function renderAll() {
+  renderSidebar();
+  renderGrid();
+  renderRecipes();
+}
+
+renderAll();
+</script>
+</body>
+</html>
