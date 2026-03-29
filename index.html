@@ -1759,7 +1759,8 @@ function removeFromPlan(day, meal) {
 }
 
 function changeServings(day, meal, delta) {
-  const current = planServings[day][meal] || 1;
+  const r = recipes.find(x => x.id === plan[day][meal]);
+  const current = planServings[day][meal] || (r ? r.serves : 1) || 1;
   planServings[day][meal] = Math.max(1, current + delta);
   saveToStorage();
   renderGrid();
