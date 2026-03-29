@@ -150,9 +150,40 @@
       font-weight: 600;
       flex-shrink: 0;
     }
-    .tag-meat { background: #fde8e8; color: #c0392b; }
-    .tag-fish { background: #e8f0fe; color: #1a56db; }
-    .tag-veg  { background: #e8f5e9; color: #2e7d32; }
+    .tag-meat   { background: #fde8e8; color: #c0392b; }
+    .tag-fish   { background: #e8f0fe; color: #1a56db; }
+    .tag-veg    { background: #e8f5e9; color: #2e7d32; }
+    .tag-pcos   { background: #f3e8fd; color: #7b2d8b; }
+    .tag-quick  { background: #fff3cd; color: #856404; }
+    .tag-custom { background: #e8f0fe; color: #2d4db8; }
+
+    /* Tag filter chips */
+    .tag-filters {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      background: #fafafa;
+    }
+    .filter-chip {
+      font-size: 0.7rem;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .filter-chip.inactive { background: #f0f0f0; color: #666; border-color: #ddd; }
+    .filter-chip.active   { border-color: currentColor; }
+    .filter-chip-meat   { background: #fde8e8; color: #c0392b; }
+    .filter-chip-fish   { background: #e8f0fe; color: #1a56db; }
+    .filter-chip-veg    { background: #e8f5e9; color: #2e7d32; }
+    .filter-chip-pcos   { background: #f3e8fd; color: #7b2d8b; }
+    .filter-chip-quick  { background: #fff3cd; color: #856404; }
+    .filter-chip-custom { background: #e8f0fe; color: #2d4db8; }
 
     /* Weekly Calendar */
     .week-grid {
@@ -510,7 +541,8 @@
         <h3>📖 My Recipes</h3>
         <span id="recipe-count" style="font-size:0.75rem;color:#666;"></span>
       </div>
-      <input class="search-box" type="text" placeholder="🔍 Search recipes…" oninput="filterSidebar(this.value)" />
+      <input class="search-box" type="text" id="sidebar-search" placeholder="🔍 Search recipes…" oninput="applyFilters()" />
+      <div class="tag-filters" id="tag-filters"></div>
       <div class="recipe-list" id="sidebar-recipe-list"></div>
     </div>
 
@@ -574,14 +606,6 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Category</label>
-          <select id="modal-category">
-            <option value="meat">🥩 Meat</option>
-            <option value="fish">🐟 Fish</option>
-            <option value="veg">🥦 Vegetarian</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label>Serves</label>
           <input type="number" id="modal-serves" value="4" min="1" max="20" />
         </div>
@@ -589,6 +613,14 @@
       <div class="form-group">
         <label>Cook Time</label>
         <input type="text" id="modal-time" placeholder="e.g. 30 mins" />
+      </div>
+      <div class="form-group">
+        <label>Tags</label>
+        <div id="modal-tag-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="modal-custom-tag" placeholder="Add custom tag…" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTag();}" />
+          <button class="btn btn-outline" style="padding:6px 12px;font-size:0.8rem;" onclick="addCustomTag()">＋</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Ingredients</label>
@@ -616,7 +648,18 @@ const MEALS = ['Breakfast','Lunch','Dinner'];
 // ══════════════════════════════════
 const STORAGE_RECIPES = 'foodplanner_recipes';
 const STORAGE_PLAN    = 'foodplanner_plan';
-const DATA_VERSION    = 'pcos-v3'; // bump this to reset recipes to new defaults
+const DATA_VERSION    = 'pcos-v5'; // bump this to reset recipes to new defaults
+
+// Built-in tags and their display colours
+const PRESET_TAGS = [
+  { key: 'pcos',  label: 'PCOS',  chipClass: 'filter-chip-pcos'  },
+  { key: 'quick', label: 'Quick', chipClass: 'filter-chip-quick' },
+  { key: 'meat',  label: 'Meat',  chipClass: 'filter-chip-meat'  },
+  { key: 'fish',  label: 'Fish',  chipClass: 'filter-chip-fish'  },
+  { key: 'veg',   label: 'Veg',   chipClass: 'filter-chip-veg'   },
+];
+
+let activeTagFilters = new Set(); // tags currently selected in sidebar
 
 function saveToStorage() {
   localStorage.setItem(STORAGE_RECIPES, JSON.stringify(recipes));
@@ -639,9 +682,9 @@ const defaultRecipes = [
     id: 1,
     name: 'Turmeric Baked Salmon',
     emoji: '🐟',
-    category: 'fish',
     serves: 4,
     time: '30 mins',
+    tags: ["pcos","fish"],
     ingredients: [
       { name: 'Salmon fillets', qty: '4' },
       { name: 'Ground turmeric', qty: '1 tsp' },
@@ -657,9 +700,9 @@ const defaultRecipes = [
     id: 2,
     name: 'Chickpea & Spinach Curry',
     emoji: '🍛',
-    category: 'veg',
     serves: 4,
     time: '35 mins',
+    tags: ["pcos","veg"],
     ingredients: [
       { name: 'Chickpeas', qty: '2 cans' },
       { name: 'Spinach', qty: '200g' },
@@ -677,9 +720,9 @@ const defaultRecipes = [
     id: 3,
     name: 'Turkey & Broccoli Quinoa Bowl',
     emoji: '🥗',
-    category: 'meat',
     serves: 4,
     time: '30 mins',
+    tags: ["pcos","meat","quick"],
     ingredients: [
       { name: 'Turkey breast mince', qty: '500g' },
       { name: 'Quinoa', qty: '300g' },
@@ -696,9 +739,9 @@ const defaultRecipes = [
     id: 4,
     name: 'Greek Yogurt Berry Parfait',
     emoji: '🫐',
-    category: 'veg',
     serves: 2,
     time: '10 mins',
+    tags: ["pcos","veg","quick"],
     ingredients: [
       { name: 'Greek yogurt (full fat)', qty: '400g' },
       { name: 'Mixed berries', qty: '200g' },
@@ -713,9 +756,9 @@ const defaultRecipes = [
     id: 5,
     name: 'Spinach & Feta Omelette',
     emoji: '🍳',
-    category: 'veg',
     serves: 2,
     time: '15 mins',
+    tags: ["pcos","veg","quick"],
     ingredients: [
       { name: 'Eggs', qty: '4' },
       { name: 'Spinach', qty: '100g' },
@@ -730,9 +773,9 @@ const defaultRecipes = [
     id: 6,
     name: 'Overnight Oats with Berries',
     emoji: '🥣',
-    category: 'veg',
     serves: 2,
     time: '5 mins + overnight',
+    tags: ["pcos","veg"],
     ingredients: [
       { name: 'Rolled oats', qty: '150g' },
       { name: 'Almond milk (unsweetened)', qty: '300ml' },
@@ -747,9 +790,9 @@ const defaultRecipes = [
     id: 7,
     name: 'Roasted Veg & Quinoa Bowl',
     emoji: '🥙',
-    category: 'veg',
     serves: 4,
     time: '35 mins',
+    tags: ["pcos","veg"],
     ingredients: [
       { name: 'Quinoa', qty: '300g' },
       { name: 'Courgette', qty: '2' },
@@ -766,9 +809,9 @@ const defaultRecipes = [
     id: 8,
     name: 'Red Lentil & Vegetable Soup',
     emoji: '🍲',
-    category: 'veg',
     serves: 4,
     time: '40 mins',
+    tags: ["pcos","veg"],
     ingredients: [
       { name: 'Red lentils', qty: '250g' },
       { name: 'Carrots', qty: '3' },
@@ -785,9 +828,9 @@ const defaultRecipes = [
     id: 9,
     name: 'Salmon & Avocado Salad',
     emoji: '🥑',
-    category: 'fish',
     serves: 2,
     time: '15 mins',
+    tags: ["pcos","fish","quick"],
     ingredients: [
       { name: 'Salmon fillets', qty: '2' },
       { name: 'Avocado', qty: '1' },
@@ -803,9 +846,9 @@ const defaultRecipes = [
     id: 10,
     name: 'Baked Chicken with Sweet Potato',
     emoji: '🍗',
-    category: 'meat',
     serves: 4,
     time: '45 mins',
+    tags: ["pcos","meat"],
     ingredients: [
       { name: 'Chicken breast', qty: '4' },
       { name: 'Sweet potato', qty: '600g' },
@@ -822,9 +865,9 @@ const defaultRecipes = [
     id: 11,
     name: 'Turkey Meatballs & Courgetti',
     emoji: '🍝',
-    category: 'meat',
     serves: 4,
     time: '35 mins',
+    tags: ["pcos","meat"],
     ingredients: [
       { name: 'Turkey mince', qty: '500g' },
       { name: 'Courgette', qty: '4 large' },
@@ -841,9 +884,9 @@ const defaultRecipes = [
     id: 12,
     name: 'Prawn & Avocado Buddha Bowl',
     emoji: '🍤',
-    category: 'fish',
     serves: 2,
     time: '20 mins',
+    tags: ["pcos","fish","quick"],
     ingredients: [
       { name: 'King prawns', qty: '300g' },
       { name: 'Quinoa', qty: '200g' },
@@ -862,9 +905,9 @@ const defaultRecipes = [
     id: 13,
     name: 'Spaghetti Bolognese',
     emoji: '🍝',
-    category: 'meat',
     serves: 4,
     time: '45 mins',
+    tags: ["meat"],
     ingredients: [
       { name: 'Spaghetti', qty: '400g' },
       { name: 'Beef mince', qty: '500g' },
@@ -881,9 +924,9 @@ const defaultRecipes = [
     id: 14,
     name: 'Chicken Stir Fry',
     emoji: '🥘',
-    category: 'meat',
     serves: 4,
     time: '20 mins',
+    tags: ["meat","quick"],
     ingredients: [
       { name: 'Chicken breast', qty: '500g' },
       { name: 'Mixed peppers', qty: '3' },
@@ -900,9 +943,9 @@ const defaultRecipes = [
     id: 15,
     name: 'Salmon with Roasted Veg',
     emoji: '🐟',
-    category: 'fish',
     serves: 4,
     time: '35 mins',
+    tags: ["fish"],
     ingredients: [
       { name: 'Salmon fillets', qty: '4' },
       { name: 'Cherry tomatoes', qty: '200g' },
@@ -918,9 +961,9 @@ const defaultRecipes = [
     id: 16,
     name: 'Chicken Tikka Masala',
     emoji: '🍛',
-    category: 'meat',
     serves: 4,
     time: '50 mins',
+    tags: ["meat"],
     ingredients: [
       { name: 'Chicken breast', qty: '600g' },
       { name: 'Tikka masala paste', qty: '4 tbsp' },
@@ -937,9 +980,9 @@ const defaultRecipes = [
     id: 17,
     name: 'Vegetable Curry',
     emoji: '🥦',
-    category: 'veg',
     serves: 4,
     time: '40 mins',
+    tags: ["veg"],
     ingredients: [
       { name: 'Chickpeas', qty: '2 cans' },
       { name: 'Tinned chopped tomatoes', qty: '1 can' },
@@ -956,9 +999,9 @@ const defaultRecipes = [
     id: 18,
     name: 'Beef Tacos',
     emoji: '🌮',
-    category: 'meat',
     serves: 4,
     time: '25 mins',
+    tags: ["meat","quick"],
     ingredients: [
       { name: 'Beef mince', qty: '500g' },
       { name: 'Taco shells', qty: '12' },
@@ -975,9 +1018,9 @@ const defaultRecipes = [
     id: 19,
     name: 'Mushroom Risotto',
     emoji: '🍄',
-    category: 'veg',
     serves: 4,
     time: '40 mins',
+    tags: ["veg"],
     ingredients: [
       { name: 'Arborio rice', qty: '350g' },
       { name: 'Mixed mushrooms', qty: '400g' },
@@ -994,9 +1037,9 @@ const defaultRecipes = [
     id: 20,
     name: 'Fish and Chips',
     emoji: '🍟',
-    category: 'fish',
     serves: 4,
     time: '45 mins',
+    tags: ["fish"],
     ingredients: [
       { name: 'Cod or haddock fillets', qty: '4' },
       { name: 'Plain flour', qty: '200g' },
@@ -1013,9 +1056,9 @@ const defaultRecipes = [
     id: 21,
     name: 'Avocado Toast',
     emoji: '🥑',
-    category: 'veg',
     serves: 2,
     time: '10 mins',
+    tags: ["veg","quick"],
     ingredients: [
       { name: 'Sourdough bread', qty: '4 slices' },
       { name: 'Avocado', qty: '2' },
@@ -1030,9 +1073,9 @@ const defaultRecipes = [
     id: 22,
     name: 'Prawn Linguine',
     emoji: '🍤',
-    category: 'fish',
     serves: 4,
     time: '25 mins',
+    tags: ["fish","quick"],
     ingredients: [
       { name: 'Linguine', qty: '400g' },
       { name: 'King prawns', qty: '400g' },
@@ -1049,9 +1092,9 @@ const defaultRecipes = [
     id: 23,
     name: 'Greek Salad',
     emoji: '🥗',
-    category: 'veg',
     serves: 4,
     time: '15 mins',
+    tags: ["veg","quick"],
     ingredients: [
       { name: 'Cucumber', qty: '1 large' },
       { name: 'Cherry tomatoes', qty: '300g' },
@@ -1067,9 +1110,9 @@ const defaultRecipes = [
     id: 24,
     name: 'Roast Chicken',
     emoji: '🍗',
-    category: 'meat',
     serves: 6,
     time: '1 hr 30 mins',
+    tags: ["meat"],
     ingredients: [
       { name: 'Whole chicken', qty: '1.8kg' },
       { name: 'Roasting potatoes', qty: '1kg' },
@@ -1086,9 +1129,9 @@ const defaultRecipes = [
     id: 25,
     name: 'Courgetti Bolognese',
     emoji: '🍝',
-    category: 'meat',
     serves: 4,
     time: '40 mins',
+    tags: ["pcos","meat"],
     ingredients: [
       { name: 'Coconut oil or olive oil', qty: '1 tsp' },
       { name: 'Red onion', qty: '1' },
@@ -1144,14 +1187,60 @@ function showTab(tab) {
 // ══════════════════════════════════
 // RENDER SIDEBAR
 // ══════════════════════════════════
-function filterSidebar(query) { renderSidebar(query.toLowerCase()); }
+function tagCssClass(tag) {
+  return ['meat','fish','veg','pcos','quick'].includes(tag) ? `tag-${tag}` : 'tag-custom';
+}
+function tagLabel(tag) {
+  const labels = { meat:'Meat', fish:'Fish', veg:'Veg', pcos:'PCOS', quick:'Quick' };
+  return labels[tag] || tag.charAt(0).toUpperCase() + tag.slice(1);
+}
+
+function applyFilters() {
+  const query = (document.getElementById('sidebar-search')?.value || '').toLowerCase();
+  renderSidebar(query);
+}
+
+function toggleTagFilter(tag) {
+  if (activeTagFilters.has(tag)) activeTagFilters.delete(tag);
+  else activeTagFilters.add(tag);
+  renderTagFilterChips();
+  applyFilters();
+}
+
+function renderTagFilterChips() {
+  const allTags = new Set();
+  recipes.forEach(r => (r.tags || []).forEach(t => allTags.add(t)));
+  const presetKeys = PRESET_TAGS.map(p => p.key);
+  const customTags = [...allTags].filter(t => !presetKeys.includes(t)).sort();
+  const ordered = [
+    ...PRESET_TAGS.filter(p => allTags.has(p.key)).map(p => p.key),
+    ...customTags
+  ];
+  const container = document.getElementById('tag-filters');
+  if (!container) return;
+  container.innerHTML = ordered.map(tag => {
+    const isActive = activeTagFilters.has(tag);
+    const chipCls  = PRESET_TAGS.find(p => p.key === tag)?.chipClass || 'filter-chip-custom';
+    return `<span class="filter-chip ${isActive ? chipCls + ' active' : 'inactive'}"
+                  onclick="toggleTagFilter('${tag}')">${tagLabel(tag)}</span>`;
+  }).join('');
+}
 
 function renderSidebar(filter = '') {
-  const list = document.getElementById('sidebar-recipe-list');
+  const list  = document.getElementById('sidebar-recipe-list');
   const count = document.getElementById('recipe-count');
-  const filtered = recipes.filter(r => r.name.toLowerCase().includes(filter));
+  const filtered = recipes.filter(r => {
+    const matchesText = r.name.toLowerCase().includes(filter);
+    const matchesTags = activeTagFilters.size === 0 ||
+      [...activeTagFilters].every(t => (r.tags || []).includes(t));
+    return matchesText && matchesTags;
+  });
   count.textContent = `${filtered.length} recipes`;
-  list.innerHTML = filtered.map(r => `
+  list.innerHTML = filtered.map(r => {
+    const tags = (r.tags || []).slice(0,2)
+      .map(t => `<span class="tag ${tagCssClass(t)}">${tagLabel(t)}</span>`)
+      .join('');
+    return `
     <div class="recipe-item"
          draggable="true"
          data-id="${r.id}"
@@ -1162,9 +1251,9 @@ function renderSidebar(filter = '') {
         <strong>${r.name}</strong>
         <span>⏱ ${r.time} · Serves ${r.serves}</span>
       </div>
-      <span class="tag tag-${r.category}">${r.category === 'meat' ? 'Meat' : r.category === 'fish' ? 'Fish' : 'Veg'}</span>
-    </div>
-  `).join('');
+      <div style="display:flex;gap:3px;flex-shrink:0;">${tags}</div>
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════
@@ -1241,12 +1330,14 @@ function renderRecipes() {
       <div class="recipe-card-header">
         <span class="big-emoji">${r.emoji}</span>
         <h3>${r.name}</h3>
-        <span class="card-tag">${r.category === 'meat' ? '🥩 Meat' : r.category === 'fish' ? '🐟 Fish' : '🥦 Veg'}</span>
       </div>
       <div class="recipe-card-body">
         <div class="meta">
           <span>⏱ ${r.time}</span>
           <span>👥 Serves ${r.serves}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+          ${(r.tags||[]).map(t => `<span class="tag ${tagCssClass(t)}">${tagLabel(t)}</span>`).join('')}
         </div>
         <ul class="ingredients-list">
           ${r.ingredients.slice(0,5).map(i => `
@@ -1381,7 +1472,7 @@ function renderShoppingList() {
     });
   });
 
-  // Group by category, preserving display order
+  // Group by ingredient type, preserving display order
   const groups = {};
   INGREDIENT_CATEGORIES.forEach(cat => groups[cat.key] = []);
   Object.values(agg).sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
@@ -1510,15 +1601,57 @@ function printPlan() {
 // ══════════════════════════════════
 // ADD / EDIT RECIPE MODAL
 // ══════════════════════════════════
+// ── Modal tag management ──
+let modalTags = [];
+
+function renderModalTags() {
+  const container = document.getElementById('modal-tag-chips');
+  if (!container) return;
+  // Preset toggles + any custom tags already added
+  const allModalTags = new Set([...PRESET_TAGS.map(p => p.key), ...modalTags]);
+  container.innerHTML = [...allModalTags].map(tag => {
+    const isOn = modalTags.includes(tag);
+    const cls  = PRESET_TAGS.find(p => p.key === tag)?.chipClass || 'filter-chip-custom';
+    return `<span class="filter-chip ${isOn ? cls + ' active' : 'inactive'}"
+                  onclick="toggleModalTag('${tag}')">${tagLabel(tag)}</span>`;
+  }).join('');
+  // Also show any extra custom tags not in presets
+  modalTags.filter(t => !PRESET_TAGS.map(p=>p.key).includes(t)).forEach(tag => {
+    if (!container.querySelector(`[data-tag="${tag}"]`)) {
+      const el = document.createElement('span');
+      el.className = 'filter-chip filter-chip-custom active';
+      el.setAttribute('data-tag', tag);
+      el.onclick = () => toggleModalTag(tag);
+      el.textContent = tagLabel(tag) + ' ×';
+      container.appendChild(el);
+    }
+  });
+}
+
+function toggleModalTag(tag) {
+  const idx = modalTags.indexOf(tag);
+  if (idx === -1) modalTags.push(tag);
+  else modalTags.splice(idx, 1);
+  renderModalTags();
+}
+
+function addCustomTag() {
+  const input = document.getElementById('modal-custom-tag');
+  const val = input.value.trim().toLowerCase().replace(/\s+/g,'-');
+  if (val && !modalTags.includes(val)) { modalTags.push(val); renderModalTags(); }
+  input.value = '';
+}
+
 function openAddRecipeModal() {
   editingRecipeId = null;
+  modalTags = [];
   document.getElementById('modal-title').textContent = 'Add Recipe';
   document.getElementById('modal-name').value    = '';
   document.getElementById('modal-emoji').value   = '🍽️';
-  document.getElementById('modal-category').value = 'meat';
   document.getElementById('modal-serves').value  = '4';
   document.getElementById('modal-time').value    = '';
   document.getElementById('modal-ingredients').innerHTML = '';
+  renderModalTags();
   addIngredientRow();
   addIngredientRow();
   document.getElementById('recipe-modal').classList.add('open');
@@ -1528,15 +1661,16 @@ function openEditRecipeModal(id) {
   const r = recipes.find(x => x.id === id);
   if (!r) return;
   editingRecipeId = id;
+  modalTags = [...(r.tags || [])];
   document.getElementById('modal-title').textContent = 'Edit Recipe';
   document.getElementById('modal-name').value    = r.name;
   document.getElementById('modal-emoji').value   = r.emoji;
-  document.getElementById('modal-category').value = r.category;
   document.getElementById('modal-serves').value  = r.serves;
   document.getElementById('modal-time').value    = r.time;
   const ing = document.getElementById('modal-ingredients');
   ing.innerHTML = '';
   r.ingredients.forEach(i => addIngredientRow(i.name, i.qty));
+  renderModalTags();
   document.getElementById('recipe-modal').classList.add('open');
 }
 
@@ -1570,9 +1704,9 @@ function saveRecipe() {
   const data = {
     name,
     emoji:    document.getElementById('modal-emoji').value.trim() || '🍽️',
-    category: document.getElementById('modal-category').value,
     serves:   parseInt(document.getElementById('modal-serves').value) || 4,
     time:     document.getElementById('modal-time').value.trim() || 'N/A',
+    tags:     [...modalTags],
     ingredients,
   };
 
@@ -1603,6 +1737,7 @@ function deleteRecipe(id) {
 // INIT
 // ══════════════════════════════════
 function renderAll() {
+  renderTagFilterChips();
   renderSidebar();
   renderGrid();
   renderRecipes();
